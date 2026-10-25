@@ -1,0 +1,350 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AeroSaga | Drone Mission Control</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f1f5f9;
+            color: #172033;
+        }
+
+        header {
+            background: #142638;
+            color: white;
+            padding: 24px 6%;
+        }
+
+        header h1 {
+            margin: 0 0 8px;
+        }
+
+        header p {
+            margin: 0;
+            color: #cbd5e1;
+        }
+
+        main {
+            max-width: 1200px;
+            margin: 28px auto;
+            padding: 0 20px;
+        }
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            border: 0;
+            background: #2563eb;
+            color: white;
+            padding: 11px 17px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        button:hover {
+            background: #1d4ed8;
+        }
+
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 18px;
+            margin: 22px 0 32px;
+        }
+
+        .card, .panel {
+            background: white;
+            border-radius: 12px;
+            padding: 22px;
+            box-shadow: 0 3px 12px #0f172a0b;
+        }
+
+        .card p {
+            margin: 0;
+            color: #64748b;
+        }
+
+        .number {
+            font-size: 30px;
+            font-weight: bold;
+            margin-top: 12px;
+        }
+
+        h2 {
+            font-size: 20px;
+            margin-top: 0;
+        }
+
+        .panel {
+            margin-bottom: 24px;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            min-width: 600px;
+        }
+
+        th, td {
+            padding: 14px 12px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        th {
+            background: #f8fafc;
+            color: #475569;
+            font-size: 13px;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 6px 10px;
+            border-radius: 20px;
+            background: #e2e8f0;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .available, .completed {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .in_mission, .in_progress {
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+
+        .failed, .cancelled, .maintenance {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .battery {
+            width: 110px;
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 6px;
+        }
+
+        .battery-fill {
+            height: 100%;
+            background: #22c55e;
+        }
+
+        .message {
+            padding: 12px 0;
+            color: #64748b;
+        }
+
+        footer {
+            text-align: center;
+            color: #64748b;
+            padding: 20px;
+        }
+
+        @media (max-width: 700px) {
+            .cards {
+                grid-template-columns: 1fr;
+            }
+
+            header {
+                padding: 22px 20px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+<header>
+    <h1>✈ AeroSaga</h1>
+    <p>Autonomous Drone Mission Control</p>
+</header>
+
+<main>
+    <div class="topbar">
+        <div>
+            <h2>Dashboard Overview</h2>
+            <p id="lastUpdated">Loading dashboard...</p>
+        </div>
+        <button onclick="loadDashboard()">Refresh Data</button>
+    </div>
+
+    <section class="cards">
+        <div class="card">
+            <p>Total Drones</p>
+            <div class="number" id="totalDrones">—</div>
+        </div>
+
+        <div class="card">
+            <p>Available Drones</p>
+            <div class="number" id="availableDrones">—</div>
+        </div>
+
+        <div class="card">
+            <p>Total Missions</p>
+            <div class="number" id="totalMissions">—</div>
+        </div>
+    </section>
+
+    <section class="panel">
+        <h2>Drone Fleet</h2>
+        <div id="droneMessage" class="message">Loading drones...</div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Drone Name</th>
+                    <th>Battery</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="droneTable"></tbody>
+        </table>
+    </section>
+
+    <section class="panel">
+        <h2>Mission Management</h2>
+        <div id="missionMessage" class="message">Loading missions...</div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Mission Name</th>
+                    <th>Destination</th>
+                    <th>Drone ID</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="missionTable"></tbody>
+        </table>
+    </section>
+</main>
+
+<footer>
+    AeroSaga · Powered by Spring Boot and Temporal
+</footer>
+
+<script>
+    function statusBadge(status) {
+        const value = String(status || "UNKNOWN");
+        const cssClass = value.toLowerCase().replace(/[^a-z0-9_-]/g, "");
+        return `<span class="status ${cssClass}">${value}</span>`;
+    }
+
+    async function loadDashboard() {
+        document.getElementById("lastUpdated").textContent =
+            "Loading latest data...";
+
+        try {
+            const [droneResponse, missionResponse] = await Promise.all([
+                fetch("/api/drones"),
+                fetch("/api/missions")
+            ]);
+
+            if (!droneResponse.ok || !missionResponse.ok) {
+                throw new Error("Could not load API data.");
+            }
+
+            const drones = await droneResponse.json();
+            const missions = await missionResponse.json();
+
+            document.getElementById("totalDrones").textContent =
+                drones.length;
+
+            document.getElementById("availableDrones").textContent =
+                drones.filter(d =>
+                    String(d.status).toUpperCase() === "AVAILABLE"
+                ).length;
+
+            document.getElementById("totalMissions").textContent =
+                missions.length;
+
+            const droneTable = document.getElementById("droneTable");
+            droneTable.innerHTML = "";
+
+            drones.forEach(drone => {
+                const battery = Math.max(
+                    0, Math.min(100, Number(drone.batteryLevel) || 0)
+                );
+
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td>${drone.id}</td>
+                    <td>${drone.droneName}</td>
+                    <td>
+                        ${battery}%
+                        <div class="battery">
+                            <div class="battery-fill"
+                                 style="width:${battery}%"></div>
+                        </div>
+                    </td>
+                    <td>${statusBadge(drone.status)}</td>
+                `;
+                droneTable.appendChild(row);
+            });
+
+            const missionTable = document.getElementById("missionTable");
+            missionTable.innerHTML = "";
+
+            missions.forEach(mission => {
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td>${mission.id}</td>
+                    <td>${mission.missionName}</td>
+                    <td>${mission.destination}</td>
+                    <td>${mission.droneId ?? "Unassigned"}</td>
+                    <td>${statusBadge(mission.status)}</td>
+                `;
+                missionTable.appendChild(row);
+            });
+
+            document.getElementById("droneMessage").textContent =
+                drones.length ? "" : "No drones found.";
+
+            document.getElementById("missionMessage").textContent =
+                missions.length ? "" : "No missions found.";
+
+            document.getElementById("lastUpdated").textContent =
+                "Last updated: " + new Date().toLocaleTimeString();
+
+        } catch (error) {
+            document.getElementById("lastUpdated").textContent =
+                "Could not load data. Check that Spring Boot is running.";
+
+            document.getElementById("droneMessage").textContent =
+                "Unable to load drones from /api/drones.";
+
+            document.getElementById("missionMessage").textContent =
+                "Unable to load missions from /api/missions.";
+
+            console.error(error);
+        }
+    }
+
+    loadDashboard();
+</script>
+</body>
+</html>
